@@ -1,8 +1,8 @@
 {
-    "name": "angular-bootstrap-grid-tree",
+    "name": "angular-bootstrap-grid-tree-CUSTOM",
     "version": "0.1.0",
     "description":"A Grid That display Tree Control for AngularJS, using CSS animation and Bootstrap style",
-    "main":["src/treeGrid.css","src/tree-grid-directive.js"],
+    "main":["src/treeGridCUSTOM.css","src/tree-grid-CUSTOM-directive.js"],
     "licence":"MIT",
     "keywords":["angularjs","bootstrap","tree", "grid","widget"],
     "authors":["Md Khan"],
