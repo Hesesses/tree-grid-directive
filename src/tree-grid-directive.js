@@ -1,610 +1,199 @@
-(function () {
-  angular
-    .module('template/treeGrid/treeGrid.html', [])
-    .run([
-      '$templateCache',
-      function ($templateCache) {
-        $templateCache.put('template/treeGrid/treeGrid.html',
-          "<div class=\"table-responsive\">\n" +
-          " <table class=\"table tree-grid\">\n" +
-          "   <thead>\n" +
-          "     <tr>\n" +
-          "       <th>{{expandingProperty.displayName || expandingProperty.field || expandingProperty}}</th>\n" +
-          "       <th ng-repeat=\"col in colDefinitions\">{{col.displayName || col.field}}</th>\n" +
-          "     </tr>\n" +
-          "   </thead>\n" +
-          "   <tbody>\n" +
-          "     <tr ng-repeat=\"row in tree_rows | filter:{visible:true} track by row.branch.uid\"\n" +
-          "       ng-class=\"'level-' + {{ row.level }} + (row.branch.selected ? ' active':'')\" class=\"tree-grid-row\">\n" +
-          "       <td><a ng-click=\"user_clicks_branch(row.branch)\"><i ng-class=\"row.tree_icon\"\n" +
-          "              ng-click=\"row.branch.expanded = !row.branch.expanded\"\n" +
-          "              class=\"indented tree-icon\"></i>\n" +
-          "           </a><span class=\"indented tree-label\" ng-click=\"on_user_click(row.branch)\">\n" +
-          "             {{row.branch[expandingProperty.field] || row.branch[expandingProperty]}}</span>\n" +
-          "       </td>\n" +
-          "       <td ng-repeat=\"col in colDefinitions\">\n" +
-          "         <div ng-if=\"col.cellTemplate\" compile=\"col.cellTemplate\"></div>\n" +
-          "         <div ng-if=\"!col.cellTemplate\">{{row.branch[col.field]}}</div>\n" +
-          "       </td>\n" +
-          "     </tr>\n" +
-          "   </tbody>\n" +
-          " </table>\n" +
-          "</div>\n" +
-          "");
-      }]);
 
-  angular
-    .module('treeGrid', [
-      'template/treeGrid/treeGrid.html'
-    ])
-
-    .directive('compile', [
-      '$compile',
-      function ($compile) {
+(function() {
+    var t;
+    t = angular.module("treeGridCustom", []), t.directive("treeGridCustom", ["$timeout", function(t) {
         return {
-          restrict: 'A',
-          link    : function (scope, element, attrs) {
-            // Watch for changes to expression.
-            scope.$watch(attrs.compile, function (new_val) {
-              /*
-               * Compile creates a linking function
-               * that can be used with any scope.
-               */
-              var link = $compile(new_val);
-
-              /*
-               * Executing the linking function
-               * creates a new element.
-               */
-              var new_elem = link(scope);
-
-              // Which we can then append to our DOM element.
-              element.append(new_elem);
-            });
-          }
-        };
-      }])
-
-    .directive('treeGrid', [
-      '$timeout',
-      'treegridTemplate',
-      function ($timeout,
-                treegridTemplate) {
-
-        return {
-          restrict   : 'E',
-          templateUrl: function (tElement, tAttrs) {
-            return tAttrs.templateUrl || treegridTemplate.getPath();
-          },
-          replace    : true,
-          scope      : {
-            treeData        : '=',
-            colDefs         : '=',
-            expandOn        : '=',
-            onSelect        : '&',
-            onClick         : '&',
-            initialSelection: '@',
-            treeControl     : '='
-          },
-          link       : function (scope, element, attrs) {
-            var error, expandingProperty, expand_all_parents, expand_level, for_all_ancestors, for_each_branch, get_parent, n, on_treeData_change, select_branch, selected_branch, tree;
-
-            error = function (s) {
-              console.log('ERROR:' + s);
-              debugger;
-              return void 0;
-            };
-
-            attrs.iconExpand = attrs.iconExpand ? attrs.iconExpand : 'icon-plus  glyphicon glyphicon-plus  fa fa-plus';
-            attrs.iconCollapse = attrs.iconCollapse ? attrs.iconCollapse : 'icon-minus glyphicon glyphicon-minus fa fa-minus';
-            attrs.iconLeaf = attrs.iconLeaf ? attrs.iconLeaf : 'icon-file  glyphicon glyphicon-file  fa fa-file';
-            attrs.expandLevel = attrs.expandLevel ? attrs.expandLevel : '3';
-            expand_level = parseInt(attrs.expandLevel, 10);
-
-            if (!scope.treeData) {
-              alert('No data was defined for the tree, please define treeData!');
-              return;
-            }
-
-            var getExpandingProperty = function getExpandingProperty() {
-              if (attrs.expandOn) {
-                expandingProperty = scope.expandOn;
-                scope.expandingProperty = scope.expandOn;
-              } else {
-                if (scope.treeData.length) {
-                  var _firstRow = scope.treeData[0],
-                    _keys = Object.keys(_firstRow);
-                  for (var i = 0, len = _keys.length; i < len; i++) {
-                    if (typeof (_firstRow[_keys[i]]) === 'string') {
-                      expandingProperty = _keys[i];
-                      break;
-                    }
-                  }
-                  if (!expandingProperty) expandingProperty = _keys[0];
-                  scope.expandingProperty = expandingProperty;
+            restrict: "E",
+            controller: "GridController",
+            template: '<div>              <table class="table table-bordered table-striped tree-grid-custom">                  <thead class="text-primary">                  <tr>                      <th>{{expandingProperty}}</th>                      <th ng-repeat="col in colDefinitions" class="text-center">{{col.displayName || col.field}}</th>                  </tr>                  </thead>                  <tbody>                  <tr ng-repeat="row in tree_rows | filter:{visible:true} track by row.branch.uid"                      ng-class="\'level-\' + {{ row.level }} + (row.branch.selected ? \' active\':\'\')" class="tree-grid-row">                      <td class="text-primary"><a ng-click="user_clicks_branch(row.branch)"><i ng-class="row.tree_icon"                                 ng-click="row.branch.expanded = !row.branch.expanded"                                 class="indented tree-icon"></i>                          </a><span class="indented tree-label" ng-click="user_clicks_branch(row.branch)">                            {{row.branch[expandingProperty]}}</span>                      </td>                      <td ng-repeat="col in colDefinitions" class="text-center">                        <input type="checkbox" ng-disabled="myPermissions[row.branch.id][3] != true" ng-model="permissions[row.branch.id][col.id]" ng-change="changePermission(row.branch.id, col.id)">                         <!--input type="checkbox" ng-disabled="myPermissions[row.branch.id][3] != true" ng-model="model[row[col.id]].checked" ng-checked="permissions[row.branch.id][col.id]" ng-change="changePermission(row.branch.id, col.id)"-->                       </td>                  </tr>                  </tbody>              </table><!--pre>{{permissions | json}}</pre-->          </div>',
+            replace: !0,
+            transclude: !0,
+            scope: {
+                permissions: "=",
+                treeData: "=",
+                colDefs: "=",
+                expandOn: "=",
+                onSelect: "&",
+                initialSelection: "@",
+                treeControl: "="
+            },
+            transclude: !0,
+            link: function(e, n, i) {
+                var r, o, a, s, l, c, u, h, d, p, f, g;
+                if (r = function(t) {
+                        return void console.log("ERROR:" + t)
+                    }, null == i.iconExpand && (i.iconExpand = "icon-plus  glyphicon glyphicon-plus  fa fa-plus"), null == i.iconCollapse && (i.iconCollapse = "icon-minus glyphicon glyphicon-minus fa fa-minus"), null == i.iconLeaf && (i.iconLeaf = "icon-file  glyphicon glyphicon-file  fa fa-file"), null == i.expandLevel && (i.expandLevel = "3"), s = parseInt(i.expandLevel, 10), !e.treeData) return void alert("no treeData defined for the tree!");
+                if (null == e.treeData.length) {
+                    if (null == treeData.label) return void alert("treeData should be an array of root branches");
+                    e.treeData = [treeData]
                 }
-              }
-            };
-
-            getExpandingProperty();
-
-            if (!attrs.colDefs) {
-              if (scope.treeData.length) {
-                var _col_defs = [],
-                  _firstRow = scope.treeData[0],
-                  _unwantedColumn = ['children', 'level', 'expanded', expandingProperty];
-                for (var idx in _firstRow) {
-                  if (_unwantedColumn.indexOf(idx) === -1) {
-                    _col_defs.push({
-                      field: idx
+                if (i.expandOn) o = e.expandOn, e.expandingProperty = e.expandOn;
+                else {
+                    for (var m = e.treeData[0], v = Object.keys(m), y = 0, b = v.length; b > y; y++)
+                        if ("string" == typeof m[v[y]]) {
+                            o = v[y];
+                            break
+                        }
+                    o || (o = v[0]), e.expandingProperty = o
+                }
+                if (i.colDefs) e.colDefinitions = e.colDefs;
+                else {
+                    var x = [],
+                        m = e.treeData[0],
+                        $ = ["children", "level", "expanded", o];
+                    for (var w in m) - 1 == $.indexOf(w) && x.push({
+                        field: w
                     });
-                  }
+                    e.colDefinitions = x
                 }
-                scope.colDefinitions = _col_defs;
-              }
-            } else {
-              scope.colDefinitions = scope.colDefs;
+                return c = function(t) {
+                    var n, i, r, o, a, s;
+                    for (n = function(e, i) {
+                            var r, o, a, s, l;
+                            if (t(e, i), null != e.children) {
+                                for (s = e.children, l = [], o = 0, a = s.length; a > o; o++) r = s[o], l.push(n(r, i + 1));
+                                return l
+                            }
+                        }, a = e.treeData, s = [], r = 0, o = a.length; o > r; r++) i = a[r], s.push(n(i, 1));
+                    return s
+                }, f = null, p = function(n) {
+                    if (!n) return null != f && (f.selected = !1), void(f = null);
+                    if (n !== f) {
+                        if (null != f && (f.selected = !1), n.selected = !0, f = n, a(n), null != n.onSelect) return t(function() {
+                            return n.onSelect(n)
+                        });
+                        if (null != e.onSelect) return t(function() {
+                            return e.onSelect({
+                                branch: n
+                            })
+                        })
+                    }
+                }, e.user_clicks_branch = function(t) {
+                    return t !== f ? p(t) : void 0
+                }, u = function(t) {
+                    var e;
+                    return e = void 0, t.parent_uid && c(function(n) {
+                        return n.uid === t.parent_uid ? e = n : void 0
+                    }), e
+                }, l = function(t, e) {
+                    var n;
+                    return n = u(t), null != n ? (e(n), l(n, e)) : void 0
+                }, a = function(t) {
+                    return l(t, function(t) {
+                        return t.expanded = !0
+                    })
+                }, e.tree_rows = [], d = function() {
+                    var t, n, r, a, s, l;
+                    for (c(function(t) {
+                            return t.uid ? void 0 : t.uid = "" + Math.random()
+                        }), c(function(t) {
+                            var e, n, i, r, o;
+                            if (angular.isArray(t.children)) {
+                                for (r = t.children, o = [], n = 0, i = r.length; i > n; n++) e = r[n], o.push(e.parent_uid = t.uid);
+                                return o
+                            }
+                        }), e.tree_rows = [], c(function(t) {
+                            var e, n;
+                            return t.children ? t.children.length > 0 ? (n = function(t) {
+                                return "string" == typeof t ? {
+                                    label: t,
+                                    children: []
+                                } : t
+                            }, t.children = function() {
+                                var i, r, o, a;
+                                for (o = t.children, a = [], i = 0, r = o.length; r > i; i++) e = o[i], a.push(n(e));
+                                return a
+                            }()) : void 0 : t.children = []
+                        }), t = function(n, r, a) {
+                            var s, l, c, u, h, d, p;
+                            if (null == r.expanded && (r.expanded = !1), c = r.children && 0 !== r.children.length ? r.expanded ? i.iconCollapse : i.iconExpand : i.iconLeaf, r.level = n, e.tree_rows.push({
+                                    level: n,
+                                    branch: r,
+                                    label: r[o],
+                                    tree_icon: c,
+                                    visible: a
+                                }), null != r.children) {
+                                for (d = r.children, p = [], u = 0, h = d.length; h > u; u++) s = d[u], l = a && r.expanded, p.push(t(n + 1, s, l));
+                                return p
+                            }
+                        }, s = e.treeData, l = [], r = 0, a = s.length; a > r; r++) n = s[r], l.push(t(1, n, !0));
+                    return l
+                }, e.$watch("treeData", d, !0), null != i.initialSelection && c(function(e) {
+                    return e.label === i.initialSelection ? t(function() {
+                        return p(e)
+                    }) : void 0
+                }), h = e.treeData.length, c(function(t, e) {
+                    return t.level = e, t.expanded = t.level < s
+                }), null != e.treeControl && angular.isObject(e.treeControl) ? (g = e.treeControl, g.expand_all = function() {
+                    return c(function(t) {
+                        return t.expanded = !0
+                    })
+                }, g.collapse_all = function() {
+                    return c(function(t) {
+                        return t.expanded = !1
+                    })
+                }, g.get_first_branch = function() {
+                    return h = e.treeData.length, h > 0 ? e.treeData[0] : void 0
+                }, g.select_first_branch = function() {
+                    var t;
+                    return t = g.get_first_branch(), g.select_branch(t)
+                }, g.get_selected_branch = function() {
+                    return f
+                }, g.get_parent_branch = function(t) {
+                    return u(t)
+                }, g.select_branch = function(t) {
+                    return p(t), t
+                }, g.get_children = function(t) {
+                    return t.children
+                }, g.select_parent_branch = function(t) {
+                    var e;
+                    return null == t && (t = g.get_selected_branch()), null != t && (e = g.get_parent_branch(t), null != e) ? (g.select_branch(e), e) : void 0
+                }, g.add_branch = function(t, n) {
+                    return null != t ? (t.children.push(n), t.expanded = !0) : e.treeData.push(n), n
+                }, g.add_root_branch = function(t) {
+                    return g.add_branch(null, t), t
+                }, g.expand_branch = function(t) {
+                    return null == t && (t = g.get_selected_branch()), null != t ? (t.expanded = !0, t) : void 0
+                }, g.collapse_branch = function(t) {
+                    return null == t && (t = f), null != t ? (t.expanded = !1, t) : void 0
+                }, g.get_siblings = function(t) {
+                    var n, i;
+                    return null == t && (t = f), null != t ? (n = g.get_parent_branch(t), i = n ? n.children : e.treeData) : void 0
+                }, g.get_next_sibling = function(t) {
+                    var e, n;
+                    return null == t && (t = f), null != t && (n = g.get_siblings(t), h = n.length, e = n.indexOf(t), h > e) ? n[e + 1] : void 0
+                }, g.get_prev_sibling = function(t) {
+                    var e, n;
+                    return null == t && (t = f), n = g.get_siblings(t), h = n.length, e = n.indexOf(t), e > 0 ? n[e - 1] : void 0
+                }, g.select_next_sibling = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t && (e = g.get_next_sibling(t), null != e) ? g.select_branch(e) : void 0
+                }, g.select_prev_sibling = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t && (e = g.get_prev_sibling(t), null != e) ? g.select_branch(e) : void 0
+                }, g.get_first_child = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t && (null != (e = t.children) ? e.length : void 0) > 0 ? t.children[0] : void 0
+                }, g.get_closest_ancestor_next_sibling = function(t) {
+                    var e, n;
+                    return e = g.get_next_sibling(t), null != e ? e : (n = g.get_parent_branch(t), g.get_closest_ancestor_next_sibling(n))
+                }, g.get_next_branch = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t ? (e = g.get_first_child(t), null != e ? e : e = g.get_closest_ancestor_next_sibling(t)) : void 0
+                }, g.select_next_branch = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t && (e = g.get_next_branch(t), null != e) ? (g.select_branch(e), e) : void 0
+                }, g.last_descendant = function(t) {
+                    var e;
+                    return h = t.children.length, 0 === h ? t : (e = t.children[h - 1], g.last_descendant(e))
+                }, g.get_prev_branch = function(t) {
+                    var e, n;
+                    return null == t && (t = f), null != t ? (n = g.get_prev_sibling(t), null != n ? g.last_descendant(n) : e = g.get_parent_branch(t)) : void 0
+                }, g.select_prev_branch = function(t) {
+                    var e;
+                    return null == t && (t = f), null != t && (e = g.get_prev_branch(t), null != e) ? (g.select_branch(e), e) : void 0
+                }) : void 0
             }
-
-            for_each_branch = function (f) {
-              var do_f, root_branch, _i, _len, _ref, _results;
-              do_f = function (branch, level) {
-                var child, _i, _len, _ref, _results;
-                f(branch, level);
-                if (branch.children != null) {
-                  _ref = branch.children;
-                  _results = [];
-                  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    child = _ref[_i];
-                    _results.push(do_f(child, level + 1));
-                  }
-                  return _results;
-                }
-              };
-              _ref = scope.treeData;
-              _results = [];
-              for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                root_branch = _ref[_i];
-                _results.push(do_f(root_branch, 1));
-              }
-              return _results;
-            };
-            selected_branch = null;
-            select_branch = function (branch) {
-              if (!branch) {
-                if (selected_branch != null) {
-                  selected_branch.selected = false;
-                }
-                selected_branch = null;
-                return;
-              }
-              if (branch !== selected_branch) {
-                if (selected_branch != null) {
-                  selected_branch.selected = false;
-                }
-                branch.selected = true;
-                selected_branch = branch;
-                expand_all_parents(branch);
-                if (branch.onSelect != null) {
-                  return $timeout(function () {
-                    return branch.onSelect(branch);
-                  });
-                } else {
-                  if (scope.onSelect != null) {
-                    return $timeout(function () {
-                      return scope.onSelect({
-                        branch: branch
-                      });
-                    });
-                  }
-                }
-              }
-            };
-            scope.on_user_click = function (branch) {
-              if (scope.onClick) {
-                scope.onClick({
-                  branch: branch
-                });
-              }
-            };
-            scope.user_clicks_branch = function (branch) {
-              if (branch !== selected_branch) {
-                return select_branch(branch);
-              }
-            };
-            get_parent = function (child) {
-              var parent;
-              parent = void 0;
-              if (child.parent_uid) {
-                for_each_branch(function (b) {
-                  if (b.uid === child.parent_uid) {
-                    return parent = b;
-                  }
-                });
-              }
-              return parent;
-            };
-            for_all_ancestors = function (child, fn) {
-              var parent;
-              parent = get_parent(child);
-              if (parent != null) {
-                fn(parent);
-                return for_all_ancestors(parent, fn);
-              }
-            };
-            expand_all_parents = function (child) {
-              return for_all_ancestors(child, function (b) {
-                return b.expanded = true;
-              });
-            };
-
-            scope.tree_rows = [];
-
-            on_treeData_change = function () {
-              getExpandingProperty();
-
-              var add_branch_to_list, root_branch, _i, _len, _ref, _results;
-              for_each_branch(function (b, level) {
-                if (!b.uid) {
-                  return b.uid = "" + Math.random();
-                }
-              });
-              for_each_branch(function (b) {
-                var child, _i, _len, _ref, _results;
-                if (angular.isArray(b.children)) {
-                  _ref = b.children;
-                  _results = [];
-                  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    child = _ref[_i];
-                    _results.push(child.parent_uid = b.uid);
-                  }
-                  return _results;
-                }
-              });
-              scope.tree_rows = [];
-              for_each_branch(function (branch) {
-                var child, f;
-                if (branch.children) {
-                  if (branch.children.length > 0) {
-                    f = function (e) {
-                      if (typeof e === 'string') {
-                        return {
-                          label   : e,
-                          children: []
-                        };
-                      } else {
-                        return e;
-                      }
-                    };
-                    return branch.children = (function () {
-                      var _i, _len, _ref, _results;
-                      _ref = branch.children;
-                      _results = [];
-                      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        child = _ref[_i];
-                        _results.push(f(child));
-                      }
-                      return _results;
-                    })();
-                  }
-                } else {
-                  return branch.children = [];
-                }
-              });
-              add_branch_to_list = function (level, branch, visible) {
-                var child, child_visible, tree_icon, _i, _len, _ref, _results;
-                if (branch.expanded == null) {
-                  branch.expanded = false;
-                }
-                if (!branch.children || branch.children.length === 0) {
-                  tree_icon = attrs.iconLeaf;
-                } else {
-                  if (branch.expanded) {
-                    tree_icon = attrs.iconCollapse;
-                  } else {
-                    tree_icon = attrs.iconExpand;
-                  }
-                }
-                branch.level = level;
-                scope.tree_rows.push({
-                  level    : level,
-                  branch   : branch,
-                  label    : branch[expandingProperty],
-                  tree_icon: tree_icon,
-                  visible  : visible
-                });
-                if (branch.children != null) {
-                  _ref = branch.children;
-                  _results = [];
-                  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    child = _ref[_i];
-                    child_visible = visible && branch.expanded;
-                    _results.push(add_branch_to_list(level + 1, child, child_visible));
-                  }
-                  return _results;
-                }
-              };
-              _ref = scope.treeData;
-              _results = [];
-              for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                root_branch = _ref[_i];
-                _results.push(add_branch_to_list(1, root_branch, true));
-              }
-              return _results;
-            };
-
-            scope.$watch('treeData', on_treeData_change, true);
-
-            if (attrs.initialSelection != null) {
-              for_each_branch(function (b) {
-                if (b.label === attrs.initialSelection) {
-                  return $timeout(function () {
-                    return select_branch(b);
-                  });
-                }
-              });
-            }
-            n = scope.treeData.length;
-            for_each_branch(function (b, level) {
-              b.level = level;
-              return b.expanded = b.level < expand_level;
-            });
-            if (scope.treeControl != null) {
-              if (angular.isObject(scope.treeControl)) {
-                tree = scope.treeControl;
-                tree.expand_all = function () {
-                  return for_each_branch(function (b, level) {
-                    return b.expanded = true;
-                  });
-                };
-                tree.collapse_all = function () {
-                  return for_each_branch(function (b, level) {
-                    return b.expanded = false;
-                  });
-                };
-                tree.get_first_branch = function () {
-                  n = scope.treeData.length;
-                  if (n > 0) {
-                    return scope.treeData[0];
-                  }
-                };
-                tree.select_first_branch = function () {
-                  var b;
-                  b = tree.get_first_branch();
-                  return tree.select_branch(b);
-                };
-                tree.get_selected_branch = function () {
-                  return selected_branch;
-                };
-                tree.get_parent_branch = function (b) {
-                  return get_parent(b);
-                };
-                tree.select_branch = function (b) {
-                  select_branch(b);
-                  return b;
-                };
-                tree.get_children = function (b) {
-                  return b.children;
-                };
-                tree.select_parent_branch = function (b) {
-                  var p;
-                  if (b == null) {
-                    b = tree.get_selected_branch();
-                  }
-                  if (b != null) {
-                    p = tree.get_parent_branch(b);
-                    if (p != null) {
-                      tree.select_branch(p);
-                      return p;
-                    }
-                  }
-                };
-                tree.add_branch = function (parent, new_branch) {
-                  if (parent != null) {
-                    parent.children.push(new_branch);
-                    parent.expanded = true;
-                  } else {
-                    scope.treeData.push(new_branch);
-                  }
-                  return new_branch;
-                };
-                tree.add_root_branch = function (new_branch) {
-                  tree.add_branch(null, new_branch);
-                  return new_branch;
-                };
-                tree.expand_branch = function (b) {
-                  if (b == null) {
-                    b = tree.get_selected_branch();
-                  }
-                  if (b != null) {
-                    b.expanded = true;
-                    return b;
-                  }
-                };
-                tree.collapse_branch = function (b) {
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    b.expanded = false;
-                    return b;
-                  }
-                };
-                tree.get_siblings = function (b) {
-                  var p, siblings;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    p = tree.get_parent_branch(b);
-                    if (p) {
-                      siblings = p.children;
-                    } else {
-                      siblings = scope.treeData;
-                    }
-                    return siblings;
-                  }
-                };
-                tree.get_next_sibling = function (b) {
-                  var i, siblings;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    siblings = tree.get_siblings(b);
-                    n = siblings.length;
-                    i = siblings.indexOf(b);
-                    if (i < n) {
-                      return siblings[i + 1];
-                    }
-                  }
-                };
-                tree.get_prev_sibling = function (b) {
-                  var i, siblings;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  siblings = tree.get_siblings(b);
-                  n = siblings.length;
-                  i = siblings.indexOf(b);
-                  if (i > 0) {
-                    return siblings[i - 1];
-                  }
-                };
-                tree.select_next_sibling = function (b) {
-                  var next;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    next = tree.get_next_sibling(b);
-                    if (next != null) {
-                      return tree.select_branch(next);
-                    }
-                  }
-                };
-                tree.select_prev_sibling = function (b) {
-                  var prev;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    prev = tree.get_prev_sibling(b);
-                    if (prev != null) {
-                      return tree.select_branch(prev);
-                    }
-                  }
-                };
-                tree.get_first_child = function (b) {
-                  var _ref;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    if (((_ref = b.children) != null ? _ref.length : void 0) > 0) {
-                      return b.children[0];
-                    }
-                  }
-                };
-                tree.get_closest_ancestor_next_sibling = function (b) {
-                  var next, parent;
-                  next = tree.get_next_sibling(b);
-                  if (next != null) {
-                    return next;
-                  } else {
-                    parent = tree.get_parent_branch(b);
-                    return tree.get_closest_ancestor_next_sibling(parent);
-                  }
-                };
-                tree.get_next_branch = function (b) {
-                  var next;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    next = tree.get_first_child(b);
-                    if (next != null) {
-                      return next;
-                    } else {
-                      next = tree.get_closest_ancestor_next_sibling(b);
-                      return next;
-                    }
-                  }
-                };
-                tree.select_next_branch = function (b) {
-                  var next;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    next = tree.get_next_branch(b);
-                    if (next != null) {
-                      tree.select_branch(next);
-                      return next;
-                    }
-                  }
-                };
-                tree.last_descendant = function (b) {
-                  var last_child;
-                  if (b == null) {
-                    debugger;
-                  }
-                  n = b.children.length;
-                  if (n === 0) {
-                    return b;
-                  } else {
-                    last_child = b.children[n - 1];
-                    return tree.last_descendant(last_child);
-                  }
-                };
-                tree.get_prev_branch = function (b) {
-                  var parent, prev_sibling;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    prev_sibling = tree.get_prev_sibling(b);
-                    if (prev_sibling != null) {
-                      return tree.last_descendant(prev_sibling);
-                    } else {
-                      parent = tree.get_parent_branch(b);
-                      return parent;
-                    }
-                  }
-                };
-                return tree.select_prev_branch = function (b) {
-                  var prev;
-                  if (b == null) {
-                    b = selected_branch;
-                  }
-                  if (b != null) {
-                    prev = tree.get_prev_branch(b);
-                    if (prev != null) {
-                      tree.select_branch(prev);
-                      return prev;
-                    }
-                  }
-                };
-              }
-            }
-          }
-        };
-      }
-    ])
-
-    .provider('treegridTemplate', function () {
-      var templatePath = 'template/treeGrid/treeGrid.html';
-
-      this.setPath = function (path) {
-        templatePath = path;
-      };
-
-      this.$get = function () {
-        return {
-          getPath: function () {
-            return templatePath;
-          }
-        };
-      };
-    });
-}).call(window);
+        }
+    }])
+}).call(this);
